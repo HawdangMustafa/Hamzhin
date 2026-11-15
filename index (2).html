@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="ckb" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سیستەمی بەڕێوەبردن و فێرکاری داینگە</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Kurdish / Arabic Fonts: Vazirmatn & Noto Sans Arabic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600;700;800&family=Vazirmatn:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <!-- Tone.js for pleasant child-friendly sound effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Vazirmatn', 'Noto Sans Arabic', 'sans-serif'],
+                    },
+                    colors: {
+                        nursery: {
+                            cream: '#FFFDF9',
+                            peach: '#FFEDD5',
+                            mint: '#D1FAE5',
+                            sky: '#E0F2FE',
+                            lavender: '#EDE9FE',
+                            coral: '#FB7185',
+                            amber: '#F59E0B',
+                            teal: '#0D9488'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Vazirmatn', 'Noto Sans Arabic', sans-serif;
+            background-color: #FFFDF9;
+            background-image: radial-gradient(#FDE68A 0.75px, transparent 0.75px), radial-gradient(#BAE6FD 0.75px, #FFFDF9 0.75px);
+            background-size: 32px 32px;
+            background-position: 0 0, 16px 16px;
+        }
+        /* Print styles for attendance and report cards */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .printable-area, .printable-area * {
+                visibility: visible;
+            }
+            .printable-area {
+                position: absolute;
+                right: 0;
+                top: 0;
+                width: 100%;
+                background: white !important;
+                box-shadow: none !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+        .bounce-hover:hover {
+            transform: translateY(-3px) scale(1.02);
+        }
+        .bounce-hover {
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Top Header -->
+    <header class="bg-white/90 backdrop-blur-md border-b-2 border-amber-100 sticky top-0 z-30 shadow-sm no-print">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-400 flex items-center justify-center text-white text-2xl shadow-md">
+                    🧸
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-extrabold text-slate-800 tracking-tight">سیستەمی بەڕێوەبردن و فێرکاری داینگە</h1>
+                    <p class="text-xs md:text-sm text-slate-500 font-medium" id="current-date-display">بەخێربێن بۆ داینگەی نموونەیی</p>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <nav class="flex flex-wrap justify-center gap-2 bg-slate-100/80 p-1.5 rounded-2xl w-full md:w-auto">
+                <button onclick="switchTab('attendance')" id="tab-btn-attendance" class="tab-btn flex-1 md:flex-none px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 bg-white text-teal-700 shadow-sm">
+                    <span>📋</span>
+                    <span>تۆماری ئامادەبوون</span>
+                </button>
+                <button onclick="switchTab('report')" id="tab-btn-report" class="tab-btn flex-1 md:flex-none px-4 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:text-slate-900 transition-all flex items-center justify-center gap-2">
+                    <span>📝</span>
+                    <span>ڕاپۆرتی ڕۆژانە</span>
+                </button>
+                <button onclick="switchTab('learning')" id="tab-btn-learning" class="tab-btn flex-1 md:flex-none px-4 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:text-slate-900 transition-all flex items-center justify-center gap-2">
+                    <span>🎨</span>
+                    <span>گۆشەی فێربوون و یاری</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Custom Notification Toast (Replaces alert) -->
+    <div id="toast-box" class="fixed bottom-5 left-5 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none no-print">
+        <div class="bg-slate-800 text-white px-5 py-3.5 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700">
+            <span id="toast-icon" class="text-xl">✅</span>
+            <span id="toast-message" class="text-sm font-semibold">کردارەکە بە سەرکەوتوویی ئەنجامدرا</span>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-6">
+
+        <!-- ========================================================= -->
+        <!-- SECTION 1: ATTENDANCE & SAFE PICKUP LOG                   -->
+        <!-- ========================================================= -->
+        <section id="section-attendance" class="space-y-6">
+            <!-- Summary Stats Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 no-print">
+                <div class="bg-white rounded-3xl p-4 border-2 border-sky-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs md:text-sm font-bold text-slate-500">کۆی منداڵان</p>
+                        <p class="text-2xl md:text-3xl font-extrabold text-sky-600 mt-1" id="stat-total">0</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center text-2xl">👶</div>
+                </div>
+                <div class="bg-white rounded-3xl p-4 border-2 border-emerald-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs md:text-sm font-bold text-slate-500">ئامادەبووان (لە داینگەن)</p>
+                        <p class="text-2xl md:text-3xl font-extrabold text-emerald-600 mt-1" id="stat-present">0</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-2xl">✅</div>
+                </div>
+                <div class="bg-white rounded-3xl p-4 border-2 border-amber-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs md:text-sm font-bold text-slate-500">ڕۆیشتووەکان (وەرگیراون)</p>
+                        <p class="text-2xl md:text-3xl font-extrabold text-amber-600 mt-1" id="stat-left">0</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-2xl">🏠</div>
+                </div>
+                <div class="bg-white rounded-3xl p-4 border-2 border-rose-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs md:text-sm font-bold text-slate-500">نەهاتووەکان</p>
+                        <p class="text-2xl md:text-3xl font-extrabold text-rose-600 mt-1" id="stat-absent">0</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-2xl">💤</div>
+                </div>
+            </div>
+
+            <!-- Toolbar: Add Child & Print -->
+            <div class="bg-white rounded-3xl p-4 md:p-5 border-2 border-slate-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 no-print">
+                <div class="flex items-center gap-2">
+                    <h2 class="text-lg font-extrabold text-slate-800">لیستی ئامادەبوون و سەلامەتی منداڵان</h2>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    <button onclick="toggleAddChildModal(true)" class="flex-1 sm:flex-none bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2.5 rounded-2xl shadow-sm transition-all flex items-center justify-center gap-2 text-sm">
+                        <span>➕</span>
+                        <span>زیادکردنی منداڵی نوێ</span>
+                    </button>
+                    <button onclick="resetDailyAttendance()" class="flex-1 sm:flex-none bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2.5 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm" title="نوێکردنەوەی تۆماری ئەمڕۆ">
+                        <span>🔄</span>
+                        <span>ڕۆژێکی نوێ</span>
+                    </button>
+                    <button onclick="printSection('attendance-printable')" class="flex-1 sm:flex-none bg-amber-500 hover:bg-amber-600 text-white font-bold px-4 py-2.5 rounded-2xl shadow-sm transition-all flex items-center justify-center gap-2 text-sm">
+                        <span>🖨️</span>
+                        <span>پرێنتکردن</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Printable Attendance Table / Cards -->
+            <div id="attendance-printable" class="bg-white rounded-3xl p-4 md:p-6 border-2 border-slate-100 shadow-sm overflow-hidden">
+                <div class="hidden print:block text-center mb-6 border-b pb-4">
+                    <h2 class="text-2xl font-bold">تۆماری ڕۆژانەی ئامادەبوون و سەلامەتی منداڵان - داینگەی حکومی</h2>
+                    <p class="text-sm text-gray-600 mt-1" id="print-date-header"></p>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right border-collapse">
+                        <thead>
+                            <tr class="border-b-2 border-slate-100 text-slate-500 text-xs md:text-sm">
+                                <th class="py-3 px-3 font-bold">ناوی منداڵ و تەمەن</th>
+                                <th class="py-3 px-3 font-bold">بەخێوکەر و مۆبایل</th>
+                                <th class="py-3 px-3 font-bold">تێبینی تەندروستی / هەستیاری</th>
+                                <th class="py-3 px-3 font-bold">دۆخی ئەمڕۆ و کات</th>
+                                <th class="py-3 px-3 font-bold text-center no-print">گۆڕینی دۆخ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="children-list-body" class="divide-y divide-slate-100 text-sm">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- SECTION 2: DAILY CHILD REPORT CARD GENERATOR              -->
+        <!-- ========================================================= -->
+        <section id="section-report" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Form Column -->
+                <div class="lg:col-span-6 bg-white rounded-3xl p-5 md:p-6 border-2 border-purple-100 shadow-sm space-y-5 no-print">
+                    <div class="flex items-center gap-3 border-b border-slate-100 pb-3">
+                        <span class="text-2xl">📝</span>
+                        <div>
+                            <h2 class="text-lg font-extrabold text-slate-800">ئامادەکردنی ڕاپۆرتی ڕۆژانە</h2>
+                            <p class="text-xs text-slate-500">زانیارییەکان هەڵبژێرە بۆ ناردنی بۆ دایک و باوکی منداڵەکە</p>
+                        </div>
+                    </div>
+
+                    <!-- Select Child -->
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1.5">ناوی منداڵ هەڵبژێرە:</label>
+                        <select id="report-child-select" onchange="updateReportPreview()" class="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 focus:outline-none focus:border-purple-400">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Mood Selector -->
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">میزاج و دڵخۆشی ئەمڕۆی چۆن بوو؟</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button type="button" onclick="setReportOption('mood', 'دڵخۆش 😊', this)" class="report-opt-mood active-opt bg-emerald-100 border-2 border-emerald-500 text-emerald-900 rounded-2xl p-3 text-center font-bold text-xs md:text-sm transition-all">
+                                <div class="text-2xl mb-1">😊</div>
+                                دڵخۆش
+                            </button>
+                            <button type="button" onclick="setReportOption('mood', 'ئاسایی 😐', this)" class="report-opt-mood bg-slate-50 border-2 border-slate-200 text-slate-700 rounded-2xl p-3 text-center font-bold text-xs md:text-sm transition-all">
+                                <div class="text-2xl mb-1">😐</div>
+                                ئاسایی
+                            </button>
+                            <button type="button" onclick="setReportOption('mood', 'کەمێک بێتاقەت 😢', this)" class="report-opt-mood bg-slate-50 border-2 border-slate-200 text-slate-700 rounded-2xl p-3 text-center font-bold text-xs md:text-sm transition-all">
+                                <div class="text-2xl mb-1">😢</div>
+                                کەمێک بێتاقەت
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Food Intake Selector -->
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">خواردنی ژەمەکان چۆن بوو؟</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button type="button" onclick="setReportOption('food', 'هەمووی خوارد 🍲', this)" class="report-opt-food active-opt bg-amber-100 border-2 border-amber-500 text-amber-900 rounded-2xl p-3 text-center font-bold text-xs md:text-sm transition-all">
+                                <div class="text-2xl mb-1">🍲</div>
+                                هەمووی خوارد
+                            </button>
+                            <button type="button" onclick="setReportOption('food', 'نیوەی خوارد 🥣', this)" class="report-opt-food bg-slate-50 border-2 border-slate-200 text-slate-700 rounded-2xl p-3 text-center font-bold text-xs md:text-sm transition-all">
+                                <div class="text-2xl mb-1">🥣</div>
+                                نیوەی خوارد
+                            </button>
+                            <button type="button" onclick="setReportOption('food', 'کەم خوارد 🥄', this)" class="report-opt-food bg-slate-50 border-2 border-slate-200 text-slate-700 rounded-2xl p-3 text-center font-bold text-xs md:text-sm transition-all">
+                                <div class="text-2xl mb-1">🥄</div>
+                                کەم خوارد
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Nap Duration Selector -->
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">ماوەی خەوتن (پشوودان):</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button type="button" onclick="setReportOption('nap', '١ کاتژمێر 😴', this)" class="report-opt-nap active-opt bg-sky-100 border-2 border-sky-500 text-sky-900 rounded-2xl p-3 text-center font-bold text-xs md:text-sm transition-all">
+                                <div class="text-2xl mb-1">😴</div>
+                                ١ کاتژمێر
+                            </button>
+                            <button type="button" onclick="setReportOption('nap', '٢ کاتژمێر 🛌', this)" class="report-opt-nap bg-slate-50 border-2 border-slate-200 text-slate-700 rounded-2xl p-3 text-center font-bold text-xs md:text-sm transition-all">
+                                <div class="text-2xl mb-1">🛌</div>
+                                ٢ کاتژمێر
+                            </button>
+                            <button type="button" onclick="setReportOption('nap', 'نەخەوت 👀', this)" class="report-opt-nap bg-slate-50 border-2 border-slate-200 text-slate-700 rounded-2xl p-3 text-center font-bold text-xs md:text-sm transition-all">
+                                <div class="text-2xl mb-1">👀</div>
+                                نەخەوت
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Caregiver Note -->
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1.5">تێبینی و پەیامی دادە بۆ دایک و باوک:</label>
+                        <textarea id="report-note-input" rows="3" oninput="updateReportPreview()" placeholder="بۆ نموونە: ئەمڕۆ بەشدارییەکی زۆر جوانی هەبوو لە چالاکی وێنەکێشان و لەگەڵ هاوڕێکانی زۆر دڵخۆش بوو..." class="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl p-3 text-sm font-medium focus:outline-none focus:border-purple-400"></textarea>
+                    </div>
+                </div>
+
+                <!-- Live Preview & Export Column -->
+                <div class="lg:col-span-6 space-y-4">
+                    <div id="report-card-printable" class="bg-gradient-to-br from-amber-50 via-white to-sky-50 rounded-3xl p-6 md:p-8 border-4 border-amber-200 shadow-md relative overflow-hidden">
+                        <!-- Decorative corner badges -->
+                        <div class="flex items-center justify-between border-b-2 border-dashed border-amber-200 pb-4 mb-5">
+                            <div class="flex items-center gap-3">
+                                <div class="w-12 h-12 rounded-2xl bg-amber-400 text-white flex items-center justify-center text-2xl shadow-sm">🌟</div>
+                                <div>
+                                    <h3 class="text-lg md:text-xl font-extrabold text-slate-800">کارتی ڕاپۆرتی ڕۆژانەی منداڵ</h3>
+                                    <p class="text-xs text-slate-500 font-semibold" id="preview-report-date"></p>
+                                </div>
+                            </div>
+                            <span class="bg-teal-100 text-teal-800 text-xs font-extrabold px-3 py-1.5 rounded-full">داینگەی حکومی</span>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div class="bg-white/90 rounded-2xl p-4 border border-amber-100 flex items-center justify-between">
+                                <span class="text-slate-500 font-bold text-sm">ناوی ئەستێرەکەمان:</span>
+                                <span class="text-lg font-extrabold text-teal-700" id="preview-child-name">---</span>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div class="bg-emerald-50/90 rounded-2xl p-3.5 border border-emerald-200 text-center">
+                                    <span class="text-xs text-emerald-700 font-bold block mb-1">میزاج و دڵخۆشی</span>
+                                    <span class="text-base font-extrabold text-slate-800" id="preview-mood">دڵخۆش 😊</span>
+                                </div>
+                                <div class="bg-amber-50/90 rounded-2xl p-3.5 border border-amber-200 text-center">
+                                    <span class="text-xs text-amber-700 font-bold block mb-1">خواردنی ژەمەکان</span>
+                                    <span class="text-base font-extrabold text-slate-800" id="preview-food">هەمووی خوارد 🍲</span>
+                                </div>
+                                <div class="bg-sky-50/90 rounded-2xl p-3.5 border border-sky-200 text-center">
+                                    <span class="text-xs text-sky-700 font-bold block mb-1">ماوەی خەوتن</span>
+                                    <span class="text-base font-extrabold text-slate-800" id="preview-nap">١ کاتژمێر 😴</span>
+                                </div>
+                            </div>
+
+                            <div class="bg-white/90 rounded-2xl p-4 border border-purple-100">
+                                <span class="text-xs font-bold text-purple-700 block mb-1.5">💌 پەیامی دادە:</span>
+                                <p class="text-sm text-slate-700 leading-relaxed font-medium" id="preview-note">ئەمڕۆ ڕۆژێکی زۆر خۆش و پڕ چالاکی بوو لە داینگە!</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 pt-3 border-t border-amber-100 flex items-center justify-between text-xs text-slate-400 font-bold">
+                            <span>بە هیوای تەندروستی و دڵخۆشی بۆ منداڵەکەتان 💐</span>
+                            <span>واژۆی دادە</span>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 no-print">
+                        <button onclick="copyReportText()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 px-5 rounded-2xl shadow-md transition-all flex items-center justify-center gap-2">
+                            <span>📋</span>
+                            <span>کۆپیکردنی دەق (بۆ واتسئەپ / ڤایبەر)</span>
+                        </button>
+                        <button onclick="printSection('report-card-printable')" class="bg-slate-800 hover:bg-slate-900 text-white font-extrabold py-3.5 px-5 rounded-2xl shadow-md transition-all flex items-center justify-center gap-2">
+                            <span>🖨️</span>
+                            <span>پرێنتکردنی کارتەکە</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- SECTION 3: KIDS INTERACTIVE LEARNING CORNER               -->
+        <!-- ========================================================= -->
+        <section id="section-learning" class="hidden space-y-8">
+            
+            <!-- Sub-Header Banner -->
+            <div class="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-3xl p-6 text-white shadow-md flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="text-5xl animate-bounce">🎈</div>
+                    <div>
+                        <h2 class="text-2xl font-extrabold">گۆشەی فێربوون و یاری منداڵان</h2>
+                        <p class="text-indigo-100 text-sm mt-1">دەست بنێ بە پیتەکاندا بۆ بینینی وشە و وێنە، یان یاری دۆزینەوەی ڕەنگەکان بکە!</p>
+                    </div>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-2xl text-sm font-bold flex items-center gap-2">
+                    <span>🔊</span>
+                    <span>دەنگی مۆسیقی چالاکە</span>
+                </div>
+            </div>
+
+            <!-- Interactive Alphabet Display Stage -->
+            <div class="bg-white rounded-3xl p-6 border-4 border-sky-200 shadow-sm text-center">
+                <div id="letter-stage" class="py-4 flex flex-col sm:flex-row items-center justify-center gap-6 transition-all">
+                    <div id="stage-emoji" class="text-7xl md:text-8xl bg-amber-100 w-32 h-32 rounded-3xl flex items-center justify-center shadow-inner">💧</div>
+                    <div class="text-center sm:text-right">
+                        <div class="inline-block bg-sky-100 text-sky-800 text-sm font-extrabold px-3 py-1 rounded-full mb-2">پیتی هەڵبژێردراو</div>
+                        <div class="flex items-center justify-center sm:justify-start gap-4">
+                            <span id="stage-letter" class="text-6xl md:text-7xl font-black text-rose-500">ئـ</span>
+                            <span class="text-4xl text-slate-300">⬅️</span>
+                            <span id="stage-word" class="text-4xl md:text-5xl font-extrabold text-slate-800">ئاو</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kurdish Alphabet Grid -->
+            <div>
+                <h3 class="text-lg font-extrabold text-slate-800 mb-3 flex items-center gap-2">
+                    <span>🔤</span>
+                    <span>پیتەکانی زمانی کوردی (دەست بنێ بە پیتێکدا):</span>
+                </h3>
+                <div id="alphabet-grid" class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-10 gap-3">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+
+            <!-- Mini-Game: Color & Shape Recognition -->
+            <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-6 md:p-8 border-4 border-amber-200 shadow-sm">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+                    <div>
+                        <span class="bg-amber-400 text-white text-xs font-extrabold px-3 py-1 rounded-full">یاری فێرکاری</span>
+                        <h3 class="text-2xl font-extrabold text-slate-800 mt-2">🎨 یاری: ڕەنگ و شێوەکە بدۆزەرەوە!</h3>
+                    </div>
+                    <div class="bg-white px-5 py-2.5 rounded-2xl border-2 border-amber-200 font-extrabold text-amber-700 text-lg shadow-sm">
+                        خاڵەکان: <span id="game-score" class="text-2xl text-emerald-600">0</span> ⭐
+                    </div>
+                </div>
+
+                <!-- Question Prompt -->
+                <div class="bg-white rounded-2xl p-5 text-center border-2 border-amber-100 mb-6 shadow-sm">
+                    <p class="text-xl md:text-2xl font-extrabold text-slate-800" id="game-question">
+                        کام لەمانە <span class="text-rose-600 underline">بازنەی سوور</span> ـە؟
+                    </p>
+                    <p id="game-feedback" class="mt-2 text-base font-bold text-emerald-600 h-6"></p>
+                </div>
+
+                <!-- Options Grid -->
+                <div id="game-options" class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- ========================================================= -->
+    <!-- MODAL 1: ADD NEW CHILD                                    -->
+    <!-- ========================================================= -->
+    <div id="add-child-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-2 border-teal-100 space-y-4">
+            <div class="flex items-center justify-between border-b pb-3">
+                <h3 class="text-lg font-extrabold text-slate-800">👶 تۆمارکردنی منداڵی نوێ</h3>
+                <button onclick="toggleAddChildModal(false)" class="text-slate-400 hover:text-slate-700 text-xl font-bold">✕</button>
+            </div>
+            <form onsubmit="handleAddChild(event)" class="space-y-3.5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">ناوی سیانی منداڵ *</label>
+                    <input type="text" id="new-child-name" required placeholder="بۆ نموونە: سارا هێمن عەلی" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:border-teal-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">تەمەن / پۆل *</label>
+                        <select id="new-child-age" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold focus:outline-none focus:border-teal-500">
+                            <option value="٢ ساڵ (پۆلی گوڵەکان)">٢ ساڵ (گوڵەکان)</option>
+                            <option value="٣ ساڵ (پۆلی پەپوولەکان)" selected>٣ ساڵ (پەپوولەکان)</option>
+                            <option value="٤ ساڵ (پۆلی ئەستێرەکان)">٤ ساڵ (ئەستێرەکان)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">ناوی دایک یان باوک *</label>
+                        <input type="text" id="new-child-parent" required placeholder="بۆ نموونە: هێمن عەلی" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:border-teal-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">ژمارەی مۆبایلی بەخێوکەر *</label>
+                    <input type="tel" id="new-child-phone" required placeholder="0770 123 4567" dir="ltr" class="w-full text-right bg-slate-50 border-2 border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:border-teal-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">تێبینی تەندروستی یان هەستیاری (ئەگەر هەیە)</label>
+                    <input type="text" id="new-child-allergy" placeholder="بۆ نموونە: هەستیاری بە پاقلەمەنی هەیە / بێ کێشەیە" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:border-teal-500">
+                </div>
+                <div class="pt-2 flex gap-2">
+                    <button type="submit" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-extrabold py-3 rounded-xl transition-all">پاشەکەوتکردن</button>
+                    <button type="button" onclick="toggleAddChildModal(false)" class="px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl">پەشیمانبوونەوە</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODAL 2: SAFE PICKUP SELECTOR                             -->
+    <!-- ========================================================= -->
+    <div id="pickup-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border-2 border-amber-200 space-y-4 text-center">
+            <div class="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center text-3xl mx-auto">🛡️</div>
+            <h3 class="text-lg font-extrabold text-slate-800">دڵنیایی وەرگرتنەوەی منداڵ</h3>
+            <p class="text-sm text-slate-600">کێ منداڵەکە (<span id="pickup-child-name" class="font-bold text-teal-700"></span>) دەباتەوە؟</p>
+            
+            <div class="grid grid-cols-2 gap-2.5 pt-2">
+                <button onclick="confirmCheckout('دایکی')" class="bg-amber-50 hover:bg-amber-100 border-2 border-amber-300 text-amber-900 font-extrabold py-3 rounded-2xl transition-all">👩 دایکی</button>
+                <button onclick="confirmCheckout('باوکی')" class="bg-sky-50 hover:bg-sky-100 border-2 border-sky-300 text-sky-900 font-extrabold py-3 rounded-2xl transition-all">👨 باوکی</button>
+                <button onclick="confirmCheckout('باپیرە / داپیرە')" class="bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-300 text-emerald-900 font-extrabold py-3 rounded-2xl transition-all">👴 باپیرە / داپیرە</button>
+                <button onclick="confirmCheckout('کەسێکی ڕێگەپێدراو')" class="bg-purple-50 hover:bg-purple-100 border-2 border-purple-300 text-purple-900 font-extrabold py-3 rounded-2xl transition-all">🪪 کەسی تر</button>
+            </div>
+            
+            <button onclick="closePickupModal()" class="w-full mt-2 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-800">پەشیمانبوونەوە</button>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- JAVASCRIPT APPLICATION LOGIC                              -->
+    <!-- ========================================================= -->
+    <script>
+        // --- 1. INITIAL DATA & LOCAL STORAGE ---
+        const STORAGE_KEY = 'kurdish_nursery_data_v1';
+
+        const defaultChildren = [
+            {
+                id: 1,
+                name: 'مەیان ئاراس قادر',
+                age: '٣ ساڵ (پەپوولەکان)',
+                parent: 'ئاراس قادر',
+                phone: '0770 154 8890',
+                allergy: 'بێ کێشەیە',
+                status: 'present', // 'present', 'left', 'absent'
+                time: '08:15 بەیانی',
+                pickedUpBy: ''
+            },
+            {
+                id: 2,
+                name: 'لەیان سۆران محەمەد',
+                age: '٤ ساڵ (ئەستێرەکان)',
+                parent: 'سۆران محەمەد',
+                phone: '0750 442 1120',
+                allergy: '⚠️ هەستیاری بە شیر و پەنیر',
+                status: 'present',
+                time: '08:30 بەیانی',
+                pickedUpBy: ''
+            },
+            {
+                id: 3,
+                name: 'ئارام کاروان عەلی',
+                age: '٢ ساڵ (گوڵەکان)',
+                parent: 'کاروان عەلی',
+                phone: '0771 990 3412',
+                allergy: 'بێ کێشەیە',
+                status: 'left',
+                time: '01:45 دوای نیوەڕۆ',
+                pickedUpBy: 'دایکی'
+            },
+            {
+                id: 4,
+                name: 'هێلین بەختیار ئەحمەد',
+                age: '٣ ساڵ (پەپوولەکان)',
+                parent: 'بەختیار ئەحمەد',
+                phone: '0751 302 7765',
+                allergy: '⚠️ هەستیاری بە هەنگوین',
+                status: 'present',
+                time: '08:05 بەیانی',
+                pickedUpBy: ''
+            },
+            {
+                id: 5,
+                name: 'ڕێبین دلێر حەسەن',
+                age: '٤ ساڵ (ئەستێرەکان)',
+                parent: 'دلێر حەسەن',
+                phone: '0770 812 5543',
+                allergy: 'بێ کێشەیە',
+                status: 'absent',
+                time: '---',
+                pickedUpBy: ''
+            }
+        ];
+
+        let childrenData = [];
+        let activePickupChildId = null;
+
+        // Report State
+        let reportState = {
+            mood: 'دڵخۆش 😊',
+            food: 'هەمووی خوارد 🍲',
+            nap: '١ کاتژمێر 😴'
+        };
+
+        // Load data from localStorage
+        function loadData() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    childrenData = JSON.parse(saved);
+                } else {
+                    childrenData = [...defaultChildren];
+                    saveData();
+                }
+            } catch (e) {
+                console.error("Error loading from localStorage:", e);
+                childrenData = [...defaultChildren];
+            }
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(childrenData));
+            } catch (e) {
+                console.error("Error saving to localStorage:", e);
+            }
+        }
+
+        // --- 2. DATE & HELPER FUNCTIONS ---
+        function formatKurdishDate() {
+            const now = new Date();
+            const days = ['یەکشەممە', 'دووشەممە', 'سێشەممە', 'چوارشەممە', 'پێنجشەممە', 'هەینی', 'شەممە'];
+            const months = ['کانوونی دووەم', 'شوبات', 'ئازار', 'نیسان', 'ئایار', 'حوزەیران', 'تەممووز', 'ئاب', 'ئەیلوول', 'تشرینی یەکەم', 'تشرینی دووەم', 'کانوونی یەکەم'];
+            const dayName = days[now.getDay()];
+            const dayNum = now.getDate();
+            const monthName = months[now.getMonth()];
+            const year = now.getFullYear();
+            return `ئەمڕۆ ${dayName}، ${dayNum}ی ${monthName}ی ${year}`;
+        }
+
+        function getCurrentTimeFormatted() {
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const period = hours >= 12 ? 'دوای نیوەڕۆ' : 'بەیانی';
+            hours = hours % 12 || 12;
+            return `${String(hours).padStart(2, '0')}:${minutes} ${period}`;
+        }
+
+        function showToast(message, icon = '✅') {
+            const toast = document.getElementById('toast-box');
+            document.getElementById('toast-message').textContent = message;
+            document.getElementById('toast-icon').textContent = icon;
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-24', 'opacity-0');
+            }, 3000);
+        }
+
+        function printSection(elementId) {
+            const el = document.getElementById(elementId);
+            el.classList.add('printable-area');
+            window.print();
+            setTimeout(() => {
+                el.classList.remove('printable-area');
+            }, 500);
+        }
+
+        // --- 3. TAB NAVIGATION ---
+        function switchTab(tabName) {
+            const sections = ['attendance', 'report', 'learning'];
+            sections.forEach(sec => {
+                const secEl = document.getElementById(`section-${sec}`);
+                const btnEl = document.getElementById(`tab-btn-${sec}`);
+                if (sec === tabName) {
+                    secEl.classList.remove('hidden');
+                    btnEl.classList.add('bg-white', 'text-teal-700', 'shadow-sm');
+                    btnEl.classList.remove('text-slate-600');
+                } else {
+                    secEl.classList.add('hidden');
+                    btnEl.classList.remove('bg-white', 'text-teal-700', 'shadow-sm');
+                    btnEl.classList.add('text-slate-600');
+                }
+            });
+
+            if (tabName === 'report') {
+                populateReportChildSelect();
+                updateReportPreview();
+            }
+        }
+
+        // --- 4. ATTENDANCE & SAFE PICKUP LOGIC ---
+        function renderAttendance() {
+            const tbody = document.getElementById('children-list-body');
+            tbody.innerHTML = '';
+
+            let presentCount = 0;
+            let leftCount = 0;
+            let absentCount = 0;
+
+            childrenData.forEach(child => {
+                if (child.status === 'present') presentCount++;
+                else if (child.status === 'left') leftCount++;
+                else absentCount++;
+
+                // Status badge styling
+                let statusBadge = '';
+                if (child.status === 'present') {
+                    statusBadge = `<span class="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-extrabold">✅ ئامادەیە (${child.time})</span>`;
+                } else if (child.status === 'left') {
+                    statusBadge = `<span class="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-extrabold">🏠 ڕۆیشتەوە (${child.time}) - لەگەڵ ${child.pickedUpBy}</span>`;
+                } else {
+                    statusBadge = `<span class="inline-flex items-center gap-1.5 bg-rose-100 text-rose-800 px-3 py-1 rounded-full text-xs font-extrabold">💤 نەهاتووە</span>`;
+                }
+
+                const isAllergy = child.allergy && child.allergy !== 'بێ کێشەیە';
+                const allergyBadge = isAllergy 
+                    ? `<span class="bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-xl text-xs font-bold inline-block">${child.allergy}</span>`
+                    : `<span class="text-slate-400 text-xs font-medium">${child.allergy || 'بێ کێشەیە'}</span>`;
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50/80 transition-colors';
+                tr.innerHTML = `
+                    <td class="py-3.5 px-3">
+                        <div class="font-extrabold text-slate-800 text-base">${child.name}</div>
+                        <div class="text-xs text-slate-500 font-semibold mt-0.5">${child.age}</div>
+                    </td>
+                    <td class="py-3.5 px-3">
+                        <div class="font-bold text-slate-700 text-xs md:text-sm">${child.parent}</div>
+                        <div class="text-xs text-teal-700 font-bold mt-0.5" dir="ltr">${child.phone}</div>
+                    </td>
+                    <td class="py-3.5 px-3">
+                        ${allergyBadge}
+                    </td>
+                    <td class="py-3.5 px-3">
+                        ${statusBadge}
+                    </td>
+                    <td class="py-3.5 px-3 no-print">
+                        <div class="flex flex-wrap items-center justify-center gap-1.5">
+                            <button onclick="markCheckIn(${child.id})" class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all ${child.status === 'present' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}">
+                                هاتووە
+                            </button>
+                            <button onclick="openPickupModal(${child.id})" class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all ${child.status === 'left' ? 'bg-amber-500 text-white shadow-sm' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}">
+                                ڕۆیشتەوە
+                            </button>
+                            <button onclick="markAbsent(${child.id})" class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all ${child.status === 'absent' ? 'bg-rose-600 text-white shadow-sm' : 'bg-rose-50 text-rose-700 hover:bg-rose-100'}">
+                                نەهاتووە
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Update Counters
+            document.getElementById('stat-total').textContent = childrenData.length;
+            document.getElementById('stat-present').textContent = presentCount;
+            document.getElementById('stat-left').textContent = leftCount;
+            document.getElementById('stat-absent').textContent = absentCount;
+        }
+
+        function markCheckIn(id) {
+            const child = childrenData.find(c => c.id === id);
+            if (child) {
+                child.status = 'present';
+                child.time = getCurrentTimeFormatted();
+                child.pickedUpBy = '';
+                saveData();
+                renderAttendance();
+                showToast(`هاتنی (${child.name}) تۆمارکرا`, '✅');
+            }
+        }
+
+        function markAbsent(id) {
+            const child = childrenData.find(c => c.id === id);
+            if (child) {
+                child.status = 'absent';
+                child.time = '---';
+                child.pickedUpBy = '';
+                saveData();
+                renderAttendance();
+                showToast(`دۆخی (${child.name}) گۆڕدرا بۆ نەهاتووە`, '💤');
+            }
+        }
+
+        function openPickupModal(id) {
+            const child = childrenData.find(c => c.id === id);
+            if (child) {
+                activePickupChildId = id;
+                document.getElementById('pickup-child-name').textContent = child.name;
+                const modal = document.getElementById('pickup-modal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        }
+
+        function closePickupModal() {
+            const modal = document.getElementById('pickup-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            activePickupChildId = null;
+        }
+
+        function confirmCheckout(person) {
+            if (activePickupChildId !== null) {
+                const child = childrenData.find(c => c.id === activePickupChildId);
+                if (child) {
+                    child.status = 'left';
+                    child.time = getCurrentTimeFormatted();
+                    child.pickedUpBy = person;
+                    saveData();
+                    renderAttendance();
+                    showToast(`ڕۆیشتنی (${child.name}) لەگەڵ ${person} تۆمارکرا`, '🛡️');
+                }
+            }
+            closePickupModal();
+        }
+
+        function toggleAddChildModal(show) {
+            const modal = document.getElementById('add-child-modal');
+            if (show) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            } else {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        function handleAddChild(e) {
+            e.preventDefault();
+            const name = document.getElementById('new-child-name').value.trim();
+            const age = document.getElementById('new-child-age').value;
+            const parent = document.getElementById('new-child-parent').value.trim();
+            const phone = document.getElementById('new-child-phone').value.trim();
+            const allergyInput = document.getElementById('new-child-allergy').value.trim();
+
+            const newChild = {
+                id: Date.now(),
+                name: name,
+                age: age,
+                parent: parent,
+                phone: phone,
+                allergy: allergyInput ? `⚠️ ${allergyInput}` : 'بێ کێشەیە',
+                status: 'present',
+                time: getCurrentTimeFormatted(),
+                pickedUpBy: ''
+            };
+
+            childrenData.unshift(newChild);
+            saveData();
+            renderAttendance();
+            e.target.reset();
+            toggleAddChildModal(false);
+            showToast(`منداڵی نوێ (${name}) زیادکرا`, '👶');
+        }
+
+        function resetDailyAttendance() {
+            childrenData.forEach(c => {
+                c.status = 'absent';
+                c.time = '---';
+                c.pickedUpBy = '';
+            });
+            saveData();
+            renderAttendance();
+            showToast('تۆماری ئامادەبوون بۆ ڕۆژێکی نوێ ئامادەکرا', '🔄');
+        }
+
+        // --- 5. DAILY REPORT CARD GENERATOR LOGIC ---
+        function populateReportChildSelect() {
+            const select = document.getElementById('report-child-select');
+            const currentVal = select.value;
+            select.innerHTML = '';
+            childrenData.forEach(child => {
+                const opt = document.createElement('option');
+                opt.value = child.id;
+                opt.textContent = `${child.name} - ${child.age}`;
+                select.appendChild(opt);
+            });
+            if (currentVal && childrenData.some(c => c.id == currentVal)) {
+                select.value = currentVal;
+            }
+        }
+
+        function setReportOption(category, value, btnElement) {
+            reportState[category] = value;
+
+            // Update button active styles
+            const allBtns = document.querySelectorAll(`.report-opt-${category}`);
+            allBtns.forEach(b => {
+                b.className = `report-opt-${category} bg-slate-50 border-2 border-slate-200 text-slate-700 rounded-2xl p-3 text-center font-bold text-xs md:text-sm transition-all`;
+            });
+
+            const colorMap = {
+                mood: 'bg-emerald-100 border-2 border-emerald-500 text-emerald-900',
+                food: 'bg-amber-100 border-2 border-amber-500 text-amber-900',
+                nap: 'bg-sky-100 border-2 border-sky-500 text-sky-900'
+            };
+
+            btnElement.className = `report-opt-${category} ${colorMap[category]} rounded-2xl p-3 text-center font-bold text-xs md:text-sm transition-all shadow-sm`;
+            updateReportPreview();
+        }
+
+        function updateReportPreview() {
+            const select = document.getElementById('report-child-select');
+            const child = childrenData.find(c => c.id == select.value) || childrenData[0];
+            
+            if (child) {
+                document.getElementById('preview-child-name').textContent = child.name;
+            }
+            document.getElementById('preview-mood').textContent = reportState.mood;
+            document.getElementById('preview-food').textContent = reportState.food;
+            document.getElementById('preview-nap').textContent = reportState.nap;
+
+            const noteText = document.getElementById('report-note-input').value.trim();
+            document.getElementById('preview-note').textContent = noteText || 'ئەمڕۆ ڕۆژێکی زۆر خۆش و پڕ چالاکی بوو لە داینگە!';
+        }
+
+        function copyReportText() {
+            const childName = document.getElementById('preview-child-name').textContent;
+            const dateStr = document.getElementById('preview-report-date').textContent;
+            const note = document.getElementById('preview-note').textContent;
+
+            const formattedMessage = `🌟 *ڕاپۆرتی ڕۆژانەی داینگەی حکومی* 🌟
+📅 ${dateStr}
+👶 *ناوی منداڵ:* ${childName}
+
+✨ *میزاج و دڵخۆشی:* ${reportState.mood}
+🍲 *خواردنی ژەمەکان:* ${reportState.food}
+😴 *ماوەی خەوتن:* ${reportState.nap}
+
+💌 *پەیامی دادە:*
+${note}
+
+بە هیوای تەندروستی و دڵخۆشی بۆ منداڵەکەتان 💐`;
+
+            // Copy using fallback textarea + execCommand for reliable iframe compatibility
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = formattedMessage;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            try {
+                document.execCommand('copy');
+                showToast('ڕاپۆرتەکە کۆپی کرا! دەتوانیت لە واتسئەپ یان ڤایبەر پەیستی بکەیت', '📋');
+            } catch (err) {
+                showToast('کێشەیەک لە کۆپیکردندا ڕوویدا', '⚠️');
+            }
+            document.body.removeChild(tempTextArea);
+        }
+
+        // --- 6. KIDS INTERACTIVE LEARNING CORNER & GAME ---
+        const kurdishAlphabet = [
+            { letter: 'ئـ', word: 'ئاو', emoji: '💧', color: 'bg-sky-100 text-sky-700 border-sky-300', note: 'C4' },
+            { letter: 'ب', word: 'بەفر', emoji: '❄️', color: 'bg-blue-100 text-blue-700 border-blue-300', note: 'D4' },
+            { letter: 'پ', word: 'پشیلە', emoji: '🐱', color: 'bg-amber-100 text-amber-700 border-amber-300', note: 'E4' },
+            { letter: 'ت', word: 'تۆپ', emoji: '⚽', color: 'bg-emerald-100 text-emerald-700 border-emerald-300', note: 'F4' },
+            { letter: 'ج', word: 'جووجەڵە', emoji: '🐥', color: 'bg-yellow-100 text-yellow-700 border-yellow-300', note: 'G4' },
+            { letter: 'چ', word: 'چاو', emoji: '👁️', color: 'bg-purple-100 text-purple-700 border-purple-300', note: 'A4' },
+            { letter: 'د', word: 'دار', emoji: '🌳', color: 'bg-green-100 text-green-700 border-green-300', note: 'B4' },
+            { letter: 'ر', word: 'ڕێوی', emoji: '🦊', color: 'bg-orange-100 text-orange-700 border-orange-300', note: 'C5' },
+            { letter: 'ز', word: 'زەرافە', emoji: '🦒', color: 'bg-amber-100 text-amber-800 border-amber-300', note: 'D5' },
+            { letter: 'س', word: 'سێو', emoji: '🍎', color: 'bg-rose-100 text-rose-700 border-rose-300', note: 'E5' },
+            { letter: 'ش', word: 'شێر', emoji: '🦁', color: 'bg-orange-100 text-orange-800 border-orange-300', note: 'F5' },
+            { letter: 'ک', word: 'کەروێشک', emoji: '🐰', color: 'bg-pink-100 text-pink-700 border-pink-300', note: 'G5' },
+            { letter: 'گ', word: 'گوڵ', emoji: '🌸', color: 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-300', note: 'A5' },
+            { letter: 'ل', word: 'لیمۆ', emoji: '🍋', color: 'bg-lime-100 text-lime-700 border-lime-300', note: 'B5' },
+            { letter: 'م', word: 'ماسی', emoji: '🐟', color: 'bg-cyan-100 text-cyan-700 border-cyan-300', note: 'C5' },
+            { letter: 'ن', word: 'نان', emoji: '🥖', color: 'bg-yellow-100 text-yellow-800 border-yellow-300', note: 'D5' },
+            { letter: 'هـ', word: 'هەنگ', emoji: '🐝', color: 'bg-amber-100 text-amber-700 border-amber-300', note: 'E5' },
+            { letter: 'و', word: 'ورچ', emoji: '🐻', color: 'bg-stone-200 text-stone-800 border-stone-300', note: 'F5' },
+            { letter: 'ی', word: 'یاری', emoji: '🧸', color: 'bg-indigo-100 text-indigo-700 border-indigo-300', note: 'G5' }
+        ];
+
+        // Tone.js pleasant synth for kids feedback
+        let synth = null;
+        function playChime(note = 'C5', isSuccess = false) {
+            try {
+                if (typeof Tone !== 'undefined') {
+                    if (Tone.context.state !== 'running') {
+                        Tone.start();
+                    }
+                    if (!synth) {
+                        synth = new Tone.PolySynth(Tone.Synth, {
+                            oscillator: { type: 'sine' },
+                            envelope: { attack: 0.02, decay: 0.2, sustain: 0.1, release: 0.5 }
+                        }).toDestination();
+                    }
+                    if (isSuccess) {
+                        synth.triggerAttackRelease(['C5', 'E5', 'G5'], '8n');
+                    } else {
+                        synth.triggerAttackRelease(note, '8n');
+                    }
+                }
+            } catch (e) {
+                // Audio fallback silent
+            }
+        }
+
+        function renderAlphabet() {
+            const grid = document.getElementById('alphabet-grid');
+            grid.innerHTML = '';
+            kurdishAlphabet.forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = `${item.color} border-2 rounded-2xl p-3 text-center shadow-sm bounce-hover flex flex-col items-center justify-center gap-1 cursor-pointer`;
+                btn.innerHTML = `
+                    <span class="text-2xl md:text-3xl font-black">${item.letter}</span>
+                    <span class="text-lg">${item.emoji}</span>
+                `;
+                btn.onclick = () => selectLetter(item);
+                grid.appendChild(btn);
+            });
+        }
+
+        function selectLetter(item) {
+            playChime(item.note);
+            const stage = document.getElementById('letter-stage');
+            stage.classList.add('scale-95');
+            setTimeout(() => {
+                document.getElementById('stage-emoji').textContent = item.emoji;
+                document.getElementById('stage-letter').textContent = item.letter;
+                document.getElementById('stage-word').textContent = item.word;
+                stage.classList.remove('scale-95');
+            }, 100);
+        }
+
+        // Mini-Game Logic
+        const shapesAndColors = [
+            { id: 'red-circle', label: 'بازنەی سوور', textColor: 'text-rose-600', svg: `<svg viewBox="0 0 100 100" class="w-20 h-20 mx-auto"><circle cx="50" cy="50" r="40" fill="#F43F5E"/></svg>` },
+            { id: 'blue-square', label: 'چوارگۆشەی شین', textColor: 'text-sky-600', svg: `<svg viewBox="0 0 100 100" class="w-20 h-20 mx-auto"><rect x="15" y="15" width="70" height="70" rx="12" fill="#0EA5E9"/></svg>` },
+            { id: 'yellow-star', label: 'ئەستێرەی زەرد', textColor: 'text-amber-500', svg: `<svg viewBox="0 0 100 100" class="w-20 h-20 mx-auto"><polygon points="50,10 61,38 90,38 66,56 75,85 50,68 25,85 34,56 10,38 39,38" fill="#F59E0B"/></svg>` },
+            { id: 'green-triangle', label: 'سێگۆشەی سەوز', textColor: 'text-emerald-600', svg: `<svg viewBox="0 0 100 100" class="w-20 h-20 mx-auto"><polygon points="50,15 88,82 12,82" fill="#10B981"/></svg>` },
+            { id: 'purple-heart', label: 'دڵی مۆر', textColor: 'text-purple-600', svg: `<svg viewBox="0 0 100 100" class="w-20 h-20 mx-auto"><path d="M50 85 C20 65 10 45 10 30 A20 20 0 0 1 50 25 A20 20 0 0 1 90 30 C90 45 80 65 50 85 Z" fill="#9333EA"/></svg>` }
+        ];
+
+        let gameScore = 0;
+        let currentTarget = null;
+
+        function initGameRound() {
+            const shuffled = [...shapesAndColors].sort(() => 0.5 - Math.random());
+            const options = shuffled.slice(0, 4);
+            currentTarget = options[Math.floor(Math.random() * options.length)];
+
+            document.getElementById('game-question').innerHTML = `کام لەمانە <span class="${currentTarget.textColor} underline">${currentTarget.label}</span> ـە؟`;
+            document.getElementById('game-feedback').textContent = '';
+
+            const optionsContainer = document.getElementById('game-options');
+            optionsContainer.innerHTML = '';
+
+            options.forEach(opt => {
+                const card = document.createElement('button');
+                card.className = 'bg-white hover:bg-amber-50 border-4 border-slate-100 hover:border-amber-300 rounded-3xl p-5 shadow-sm bounce-hover flex flex-col items-center justify-center gap-2 transition-all cursor-pointer';
+                card.innerHTML = opt.svg;
+                card.onclick = () => checkGameAnswer(opt, card);
+                optionsContainer.appendChild(card);
+            });
+        }
+
+        function checkGameAnswer(selected, cardElement) {
+            const feedbackEl = document.getElementById('game-feedback');
+            if (selected.id === currentTarget.id) {
+                playChime('C5', true);
+                gameScore += 10;
+                document.getElementById('game-score').textContent = gameScore;
+                feedbackEl.textContent = '🎉 ئافەرین! وەڵامەکەت زۆر ڕاستە!';
+                feedbackEl.className = 'mt-2 text-base font-extrabold text-emerald-600 h-6';
+                cardElement.classList.add('border-emerald-500', 'bg-emerald-50');
+                setTimeout(() => {
+                    initGameRound();
+                }, 1200);
+            } else {
+                playChime('A3', false);
+                feedbackEl.textContent = '🤔 هەوڵبدەرەوە ئازیزم، دەتوانیت بیدۆزیتەوە!';
+                feedbackEl.className = 'mt-2 text-base font-bold text-rose-500 h-6';
+                cardElement.classList.add('border-rose-300', 'opacity-60');
+            }
+        }
+
+        // --- 7. INITIALIZATION ---
+        window.onload = function () {
+            const dateStr = formatKurdishDate();
+            document.getElementById('current-date-display').textContent = dateStr;
+            document.getElementById('print-date-header').textContent = dateStr;
+            document.getElementById('preview-report-date').textContent = dateStr;
+
+            loadData();
+            renderAttendance();
+            populateReportChildSelect();
+            updateReportPreview();
+            renderAlphabet();
+            initGameRound();
+        };
+    </script>
+</body>
+</html>
